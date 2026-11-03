@@ -105,6 +105,12 @@
     <p class="hint">Turn Hangover on under <b>Files &amp; Folders</b>. If it still can't get in, add it under <b>Full Disk Access</b> instead.</p>
   </section>
 
+  <section class="card" id="loginCard" hidden>
+    <h2>Hangover won't start by itself after a restart yet</h2>
+    <p id="loginText"></p>
+    <p><button class="primary" id="loginBtn">Open Login Items</button></p>
+  </section>
+
   <section class="card" id="problemsCard" hidden>
     <h2>Needs attention <span class="muted">— from the last run</span></h2>
     <div id="problems"></div>
@@ -264,6 +270,12 @@ function renderProblems() {
   $("permCard").hidden = !perm;
   if (perm) $("permText").textContent = `macOS blocked Hangover from opening “${perm.folder}”. Until you allow it, nothing in that folder gets sorted.`;
 
+  const li = state.loginItem;
+  $("loginCard").hidden = !(rules.auto_sort && li !== "enabled");
+  $("loginText").textContent = li === "notFound"
+    ? "Move Hangover into your Applications folder and open it from there, so macOS can start it when you log in."
+    : "macOS needs your OK: in Login Items, turn Hangover on under “Allow in the Background” or “Open at Login”.";
+
   const h = $("health");
   if (errors.length) { h.textContent = `${errors.length} problem${errors.length > 1 ? "s" : ""} in the last run`; h.className = "pill bad"; }
   else if (!rules.auto_sort) { h.textContent = "Auto-sort off"; h.className = "pill warn"; }
@@ -317,6 +329,7 @@ $("startBtn").onclick = async () => {
 };
 $("laterBtn").onclick = async () => { applyState(await call("completeFirstRun")); };
 $("permBtn").onclick = () => call("openPrivacySettings");
+$("loginBtn").onclick = () => call("openLoginItems");
 $("saveBtn").onclick = async () => {
   try { await call("saveRules", rules); setDirty(false); applyState(await call("getState")); toast("Rules saved"); }
   catch (e) { toast(e.message, true); }

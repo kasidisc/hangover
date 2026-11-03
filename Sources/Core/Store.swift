@@ -33,7 +33,7 @@ final class Store {
 
     /// Current rules. A missing file becomes the starter rules; a broken one falls back to the backup
     /// (or starter rules) and is kept as rules.json.corrupt-<time> so nothing the user wrote is lost.
-    func loadRules() -> (RuleSet, warning: String?) {
+    func loadRules(lastGood: RuleSet? = nil) -> (RuleSet, warning: String?) {
         lock.lock(); defer { lock.unlock() }
         if !exists(rulesURL) {
             let starter = starterRules(screenshotPrefix: screenshotNamePrefix())
@@ -47,7 +47,10 @@ final class Store {
             try? FileManager.default.copyItem(at: rulesURL, to: dir.appendingPathComponent("rules.json.corrupt-\(stamp)"))
             let fallback: RuleSet
             let source: String
-            if let bak = try? decodeValid(backupURL) {
+            if let good = lastGood {
+                fallback = good
+                source = "the rules it was already running with"
+            } else if let bak = try? decodeValid(backupURL) {
                 fallback = bak
                 source = "your previous rules"
             } else {
@@ -55,7 +58,7 @@ final class Store {
                 source = "the starter rules"
             }
             try? write(fallback)
-            return (fallback, "Your rules file couldn't be read (\(error)), so Hangover is using \(source). "
+            return (fallback, "Your rules file couldn't be read (\(friendlyError(error))), so Hangover is using \(source). "
                     + "The unreadable file was kept as rules.json.corrupt-\(stamp).")
         }
     }

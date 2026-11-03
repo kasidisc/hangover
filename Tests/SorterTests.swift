@@ -6,7 +6,7 @@ private let yesterday = cal.date(byAdding: .day, value: -1, to: fixedNow)!
 
 /// Creates a file (or directory) with a given creation date.
 @discardableResult
-private func make(_ dir: URL, _ name: String, created: Date = yesterday, dir isDir: Bool = false,
+private func make(_ dir: URL, _ name: String, created: Date = yesterday, modified: Date? = nil, dir isDir: Bool = false,
                   contents: String = "x") -> URL {
     let url = dir.appendingPathComponent(name)
     if isDir {
@@ -15,7 +15,8 @@ private func make(_ dir: URL, _ name: String, created: Date = yesterday, dir isD
         try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try! contents.write(to: url, atomically: true, encoding: .utf8)
     }
-    try! FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+    try! FileManager.default.setAttributes([.creationDate: created, .modificationDate: modified ?? created],
+                                           ofItemAtPath: url.path)
     return url
 }
 
@@ -26,7 +27,8 @@ private struct AddedOverride: FileSystem {
     let real = RealFileSystem()
     let added: [String: Date]
     func contents(of url: URL) throws -> [URL] { try real.contents(of: url) }
-    func isDirectory(_ url: URL) -> Bool { real.isDirectory(url) }
+    func isDirectory(_ url: URL) -> Bool? { real.isDirectory(url) }
+    func isAppBundle(_ url: URL) -> Bool { real.isAppBundle(url) }
     func isSymlink(_ url: URL) -> Bool { real.isSymlink(url) }
     func facts(_ url: URL) throws -> FileFacts {
         var f = try real.facts(url)
@@ -77,11 +79,11 @@ func registerSorterTests() {
         expect(log.contains("MOVED (Archives) a.zip -> "), log)
     }
     test("usesDateAddedForAddedFolders") {
-        let fs = AddedOverride(added: ["old.zip": yesterday, "new.zip": fixedNow])
+        let fs = AddedOverride(added: ["old.zip": yesterday, "new.zip": fixedNow])  // "added" differs from "created" only for new.zip
         var t = setup([], age: .added, fs: fs)
         t.set.folders[0].rules = [archives(t.root)]
-        make(t.src, "old.zip", created: fixedNow)     // created today, added yesterday -> moves
-        make(t.src, "new.zip", created: yesterday)    // created long ago, added today -> waits
+        make(t.src, "old.zip", created: yesterday)    // added yesterday -> moves
+        make(t.src, "new.zip", created: yesterday)    // created yesterday but added today -> waits
         let r = t.sorter.run(t.set, apply: false, trigger: "test")
         expect(r.first { $0.file == "old.zip" }?.status == .wouldMove, "\(r)")
         expect(r.first { $0.file == "new.zip" }?.status == .waiting, "\(r)")
@@ -135,10 +137,13 @@ func registerSorterTests() {
             Rule(name: "Apps2", extensions: ["app2"], to: out.path),
         ]
         make(t.src, "Stuff.zip", dir: true)
-        make(t.src, "Tool.app", dir: true)
+        make(t.src.appendingPathComponent("Tool.app/Contents"), "Info.plist")
+        make(t.src, "Tool.app", dir: true)  // back-date the bundle itself
+        make(t.src, "Fake.app", dir: true)
         make(t.src, "Tool2.app2", dir: true)
         _ = t.sorter.run(t.set, apply: true, trigger: "test")
         expect(exists(out.appendingPathComponent("Tool.app")), "app bundle moves")
+        expect(exists(t.src.appendingPathComponent("Fake.app")), "plain folder named .app stays")
         expect(exists(t.src.appendingPathComponent("Stuff.zip")), "plain folder stays even with allowBundles")
         expect(exists(t.src.appendingPathComponent("Tool2.app2")), "folder stays without allowBundles")
     }
@@ -151,6 +156,23 @@ func registerSorterTests() {
         expect(r.count == 1 && r[0].status == .secret && r[0].file == "aws_accessKeys.csv", "\(r)")
         expect(exists(t.src.appendingPathComponent("aws_accessKeys.csv")))
         expect(exists(t.src.appendingPathComponent("keys.pem")))
+    }
+    test("modifiedTodayWaits") {
+        var t = setup([])
+        t.set.folders[0].rules = [archives(t.root)]
+        make(t.src, "late.zip", created: yesterday, modified: fixedNow)  // download finished after midnight
+        let r = t.sorter.run(t.set, apply: true, trigger: "test")
+        expect(r.first?.status == .waiting, "\(r)")
+        expect(exists(t.src.appendingPathComponent("late.zip")))
+    }
+    test("firefoxPlaceholderSkipped") {
+        var t = setup([])
+        t.set.folders[0].rules = [archives(t.root)]
+        make(t.src, "big.zip", contents: "")      // zero-byte placeholder
+        make(t.src, "big.zip.part")
+        let r = t.sorter.run(t.set, apply: true, trigger: "test")
+        expect(r.isEmpty, "\(r)")
+        expect(exists(t.src.appendingPathComponent("big.zip")))
     }
     test("logRotates") {
         let dir = tempDir()

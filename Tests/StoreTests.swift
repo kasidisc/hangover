@@ -47,6 +47,15 @@ func registerStoreTests() {
         expect(loaded.autoSort == true, "fell back to the backup")
         expect(names(t.dir).contains { $0.hasPrefix("rules.json.corrupt-") }, "\(names(t.dir))")
     }
+    test("corruptWithoutBackupUsesLastGoodInMemory") {
+        let t = makeStore()
+        var (set, _) = t.store.loadRules()
+        set.autoSort = true
+        try JSONEncoder().encode(set).write(to: t.dir.appendingPathComponent("rules.json"))  // hand-written, no .bak
+        try "{oops".write(to: t.dir.appendingPathComponent("rules.json"), atomically: true, encoding: .utf8)
+        let (loaded, warning) = t.store.loadRules(lastGood: set)
+        expect(warning != nil && loaded.autoSort == true, "kept the rules the app was running with")
+    }
     test("importInvalidLeavesRulesUntouched") {
         let t = makeStore()
         let (before, _) = t.store.loadRules()

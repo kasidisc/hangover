@@ -1,15 +1,17 @@
 import AppKit
+import ServiceManagement
 import WebKit
 
 /// Handles messages from ui.html: {id, action, payload} -> window.__hangoverReply(id, {ok, data|error}).
 final class Bridge: NSObject, WKScriptMessageHandler {
     private let controller: AppController
     private weak var web: WKWebView?
-    private let work = DispatchQueue(label: "hangover.bridge")
+    private let pageURL: URL?
 
-    init(controller: AppController, web: WKWebView) {
+    init(controller: AppController, web: WKWebView, pageURL: URL?) {
         self.controller = controller
         self.web = web
+        self.pageURL = pageURL
     }
 
     // MARK: JSON helpers
@@ -42,6 +44,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
             "logPath": tilde(controller.logger.url.path),
             "firstRunDone": s.firstRunDone,
             "warning": controller.loadWarning as Any,
+            "loginItem": controller.loginItemStatus,
         ]
     }
 
@@ -58,12 +61,15 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     private func reply(_ id: Any, ok data: Any = NSNull()) { send("window.__hangoverReply", [id, ["ok": true, "data": data]]) }
 
     private func reply(_ id: Any, error: Error) {
-        send("window.__hangoverReply", [id, ["ok": false, "error": "\(error)"]])
+        send("window.__hangoverReply", [id, ["ok": false, "error": friendlyError(error)]])
     }
 
     // MARK: Incoming
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        // Only the bundled panel page may drive Hangover (not a file dropped onto the window).
+        guard message.frameInfo.isMainFrame, let page = pageURL,
+              message.frameInfo.request.url?.standardizedFileURL.path == page.standardizedFileURL.path else { return }
         guard let body = message.body as? [String: Any], let id = body["id"], let action = body["action"] as? String else { return }
         let payload = body["payload"]
         do {
@@ -74,7 +80,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
                 let saved = try controller.saveRules(try decode(RuleSet.self, from: payload))
                 reply(id, ok: json(saved))
             case "preview", "sortNow":
-                work.async {
+                controller.queue.async {
                     let results = action == "preview" ? self.controller.preview() : self.controller.sortNow(trigger: "panel")
                     self.reply(id, ok: self.json(results))
                 }
@@ -93,8 +99,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
                 panel.allowedContentTypes = [.json]
                 panel.prompt = "Import"
                 if panel.runModal() == .OK, let url = panel.url {
-                    reply(id, ok: json(try controller.store.importRules(from: url)))
-                    controller.applySchedule()
+                    reply(id, ok: json(try controller.importRules(from: url)))
                 } else { reply(id) }
             case "exportRules":
                 let panel = NSSavePanel()
@@ -111,6 +116,9 @@ final class Bridge: NSObject, WKScriptMessageHandler {
                     controller.updateState { if !$0.ignoredSecrets.contains(path) { $0.ignoredSecrets.append(path) } }
                 }
                 reply(id, ok: stateJSON())
+            case "openLoginItems":
+                SMAppService.openSystemSettingsLoginItems()
+                reply(id)
             case "openPrivacySettings":
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
                 reply(id)

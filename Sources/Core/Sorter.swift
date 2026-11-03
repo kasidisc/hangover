@@ -16,11 +16,13 @@ struct SortResult: Codable, Equatable {
 struct FileFacts {
     var dayAdded: Date?
     var dayCreated: Date
+    var modified: Date
 }
 
 protocol FileSystem {
     func contents(of url: URL) throws -> [URL]
-    func isDirectory(_ url: URL) -> Bool
+    func isDirectory(_ url: URL) -> Bool?
+    func isAppBundle(_ url: URL) -> Bool
     func isSymlink(_ url: URL) -> Bool
     func facts(_ url: URL) throws -> FileFacts
     func exists(_ url: URL) -> Bool
@@ -35,15 +37,21 @@ struct RealFileSystem: FileSystem {
         try fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [])
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
-    func isDirectory(_ url: URL) -> Bool {
-        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    /// nil when macOS won't say (the sorter then leaves the item alone).
+    func isDirectory(_ url: URL) -> Bool? {
+        try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory
+    }
+    /// A real app has Contents/Info.plist; a plain folder that happens to end in ".app" doesn't.
+    func isAppBundle(_ url: URL) -> Bool {
+        fm.fileExists(atPath: url.appendingPathComponent("Contents/Info.plist").path)
     }
     func isSymlink(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
     }
     func facts(_ url: URL) throws -> FileFacts {
-        let v = try url.resourceValues(forKeys: [.addedToDirectoryDateKey, .creationDateKey])
-        return FileFacts(dayAdded: v.addedToDirectoryDate, dayCreated: v.creationDate ?? Date())
+        let v = try url.resourceValues(forKeys: [.addedToDirectoryDateKey, .creationDateKey, .contentModificationDateKey])
+        let created = v.creationDate ?? Date()
+        return FileFacts(dayAdded: v.addedToDirectoryDate, dayCreated: created, modified: v.contentModificationDate ?? created)
     }
     func exists(_ url: URL) -> Bool { fm.fileExists(atPath: url.path) }
     func createDirectory(_ url: URL) throws { try fm.createDirectory(at: url, withIntermediateDirectories: true) }
@@ -109,8 +117,12 @@ final class Sorter {
             let name = url.lastPathComponent
             if isSkipped(name, never) || fs.isSymlink(url) { continue }
             guard let rule = firstMatchingRule(name, in: folder) else { continue }
-            if fs.isDirectory(url) && !(fileExtension(name) == "app" && rule.allowBundles == true) {
-                continue  // folders are never moved; only .app bundles when the rule allows it
+            guard let isDir = fs.isDirectory(url) else { continue }  // unknown type: leave it alone
+            if isDir && !(fileExtension(name) == "app" && rule.allowBundles == true && fs.isAppBundle(url)) {
+                continue  // folders are never moved; only real .app bundles when the rule allows it
+            }
+            if fs.exists(src.appendingPathComponent(name + ".part")) {
+                continue  // Firefox's placeholder for a download still in progress
             }
             if isSecret(name, never) {
                 log.write("[\(folder.name)] SECRET left in place, file it somewhere safe by hand: \(name)")
@@ -124,7 +136,9 @@ final class Sorter {
                                           detail: error.localizedDescription))
                 continue
             }
-            let day = folder.ageField == .added ? (facts.dayAdded ?? facts.dayCreated) : facts.dayCreated
+            // A download that finished after midnight was still being written today: it waits too.
+            let base = folder.ageField == .added ? (facts.dayAdded ?? facts.dayCreated) : facts.dayCreated
+            let day = max(base, facts.modified)
             if day >= today {
                 results.append(SortResult(folder: folder.name, status: .waiting, file: name, rule: rule.name))
                 continue

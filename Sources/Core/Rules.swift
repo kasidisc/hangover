@@ -96,7 +96,24 @@ struct NeverMove: Codable, Equatable {
         case secretExtensions = "secret_extensions", secretNameContains = "secret_name_contains"
         case skipExtensions = "skip_extensions", skipNamePrefixes = "skip_name_prefixes"
     }
+
+    init(secretExtensions: [String], secretNameContains: [String], skipExtensions: [String], skipNamePrefixes: [String]) {
+        self.secretExtensions = secretExtensions; self.secretNameContains = secretNameContains
+        self.skipExtensions = skipExtensions; self.skipNamePrefixes = skipNamePrefixes
+    }
+
+    /// A list the user cleared entirely is simply missing from the file; treat it as empty.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        secretExtensions = try c.decodeIfPresent([String].self, forKey: .secretExtensions) ?? []
+        secretNameContains = try c.decodeIfPresent([String].self, forKey: .secretNameContains) ?? []
+        skipExtensions = try c.decodeIfPresent([String].self, forKey: .skipExtensions) ?? []
+        skipNamePrefixes = try c.decodeIfPresent([String].self, forKey: .skipNamePrefixes) ?? []
+    }
 }
+
+/// Never-move entries the user can't remove: partial downloads and the built-in secret patterns.
+let partialDownloadExtensions = ["download", "crdownload", "part", "partial", "opdownload"]
 
 struct RuleSet: Codable, Equatable {
     var autoSort: Bool
@@ -144,6 +161,22 @@ enum RuleError: Error, CustomStringConvertible {
     var description: String { if case .invalid(let m) = self { return m }; return "" }
 }
 
+/// A sentence a non-technical user can read, instead of a Swift/Cocoa error dump.
+func friendlyError(_ error: Error) -> String {
+    if let e = error as? RuleError { return e.description }
+    if let e = error as? DecodingError {
+        let path: [CodingKey]
+        switch e {
+        case .typeMismatch(_, let c), .valueNotFound(_, let c), .dataCorrupted(let c): path = c.codingPath
+        case .keyNotFound(let k, let c): path = c.codingPath + [k]
+        @unknown default: path = []
+        }
+        let at = path.map { $0.intValue.map { "#\($0 + 1)" } ?? $0.stringValue }.joined(separator: " › ")
+        return "The rules file isn't in the format Hangover expects" + (at.isEmpty ? "." : " (problem at: \(at)).")
+    }
+    return (error as NSError).localizedDescription
+}
+
 func expandTilde(_ path: String, home: URL) -> URL {
     if path == "~" { return home }
     if path.hasPrefix("~/") { return home.appendingPathComponent(String(path.dropFirst(2))) }
@@ -167,9 +200,13 @@ func validate(_ set: RuleSet, home: URL, fileExists: (URL) -> Bool) throws -> Ru
     s.neverMove.skipExtensions = cleanList(s.neverMove.skipExtensions, lower: true) ?? []
     s.neverMove.secretNameContains = (cleanList(s.neverMove.secretNameContains) ?? []).map { $0.lowercased() }
     s.neverMove.skipNamePrefixes = cleanList(s.neverMove.skipNamePrefixes) ?? []
-    for must in ["~$", "."] where !s.neverMove.skipNamePrefixes.contains(must) {
-        s.neverMove.skipNamePrefixes.append(must)  // hidden/lock files are always skipped
+    func ensure(_ list: inout [String], _ required: [String]) {
+        for r in required where !list.contains(r) { list.append(r) }
     }
+    ensure(&s.neverMove.skipNamePrefixes, ["~$", "."])  // hidden/lock files are always skipped
+    ensure(&s.neverMove.skipExtensions, partialDownloadExtensions)
+    ensure(&s.neverMove.secretExtensions, defaultNeverMove.secretExtensions)
+    ensure(&s.neverMove.secretNameContains, defaultNeverMove.secretNameContains)
 
     let trash = home.appendingPathComponent(".Trash").standardizedFileURL.path
     for fi in s.folders.indices {
@@ -195,7 +232,9 @@ func validate(_ set: RuleSet, home: URL, fileExists: (URL) -> Bool) throws -> Ru
             if dest == trash || dest.hasPrefix(trash + "/") || dest.contains("/.Trash") {
                 throw RuleError.invalid("rule '\(r.name)': moving to the Trash is not allowed")
             }
-            if dest == src.path {
+            // APFS is case-insensitive and paths may run through symlinks: compare resolved, lowercased.
+            let same = { (u: URL) in u.resolvingSymlinksInPath().standardizedFileURL.path.lowercased() }
+            if same(URL(fileURLWithPath: dest)) == same(src) {
                 throw RuleError.invalid("rule '\(r.name)': destination is the watched folder itself")
             }
             r.extensions = cleanList(r.extensions, lower: true)

@@ -2,15 +2,20 @@ import AppKit
 import ServiceManagement
 
 /// Owns the engine, the saved state and the hourly schedule. The menu bar and the panel both talk to this.
+///
+/// Threading: every sort and preview runs on `queue`; `state` is only read or changed on the main thread.
 final class AppController {
     let store: Store
     let logger: Logger
+    /// Serial queue for all sorting work (hourly timer, wake, menu, panel).
+    let queue = DispatchQueue(label: "hangover.sort")
     private let sorter: Sorter
     private let previewSorter: Sorter
-    private let queue = DispatchQueue(label: "hangover.sort")
     private var timer: Timer?
     private(set) var state: AppState
-    private(set) var loadWarning: String?
+    private let rulesLock = NSLock()
+    private var lastGood: RuleSet?
+    private var warning: String?
     var onChange: (() -> Void)?
 
     init(supportDir: URL, logURL: URL) {
@@ -21,10 +26,23 @@ final class AppController {
         previewSorter = Sorter(fs: RealFileSystem(), log: Logger(url: URL(fileURLWithPath: "/dev/null")),
                                home: home, now: Date.init, calendar: .current)
         state = store.loadState()
-        loadWarning = store.loadRules().warning
+        _ = rules
     }
 
-    var rules: RuleSet { store.loadRules().0 }
+    /// Current rules, re-read from disk so hand edits apply. A broken file falls back to the rules the
+    /// app was already running with, and the warning stays visible until the next successful save.
+    var rules: RuleSet {
+        rulesLock.lock(); defer { rulesLock.unlock() }
+        let (set, w) = store.loadRules(lastGood: lastGood)
+        if let w = w { warning = w }
+        lastGood = set
+        return set
+    }
+
+    var loadWarning: String? {
+        rulesLock.lock(); defer { rulesLock.unlock() }
+        return warning
+    }
 
     func folderPaths() -> [String: URL] {
         var out: [String: URL] = [:]
@@ -41,13 +59,17 @@ final class AppController {
         return (state.lastRun, p.errors.count, p.secrets.count, rules.autoSort)
     }
 
+    /// Runs one sort on the calling thread (call it on `queue`, or on main before the app starts).
     @discardableResult
     func sortNow(trigger: String = "manual") -> [SortResult] {
         let results = sorter.run(rules, apply: true, trigger: trigger)
-        state.lastRun = Date()
-        state.lastResults = results
-        store.saveState(state)
-        DispatchQueue.main.async { self.onChange?() }
+        let commit = {
+            self.state.lastRun = Date()
+            self.state.lastResults = results
+            self.store.saveState(self.state)
+            self.onChange?()
+        }
+        if Thread.isMainThread { commit() } else { DispatchQueue.main.sync(execute: commit) }
         return results
     }
 
@@ -55,24 +77,57 @@ final class AppController {
         previewSorter.run(rules, apply: false, trigger: "preview")
     }
 
+    /// Scheduled runs check auto-sort at run time, so a hand edit that turns it off is respected.
+    func runInBackground(trigger: String, onlyIfAutoSort: Bool = false) {
+        queue.async {
+            if onlyIfAutoSort && !self.rules.autoSort { return }
+            self.sortNow(trigger: trigger)
+        }
+    }
+
     func saveRules(_ set: RuleSet) throws -> RuleSet {
         let saved = try store.saveRules(set)
-        loadWarning = nil
+        rulesLock.lock()
+        lastGood = saved
+        warning = nil
+        rulesLock.unlock()
+        syncLoginItem(saved.autoSort)
         applySchedule()
         onChange?()
         return saved
+    }
+
+    func importRules(from url: URL) throws -> RuleSet {
+        let set = try JSONDecoder().decode(RuleSet.self, from: Data(contentsOf: url))
+        return try saveRules(set)
     }
 
     func setAutoSort(_ on: Bool) throws {
         var set = rules
         set.autoSort = on
         _ = try saveRules(set)
+        if on { runInBackground(trigger: "auto") }
+    }
+
+    /// Keeps "start at login" in step with auto-sort.
+    private func syncLoginItem(_ on: Bool) {
+        let service = SMAppService.mainApp
         do {
-            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            if on && service.status != .enabled && service.status != .requiresApproval { try service.register() }
+            if !on && service.status != .notRegistered { try service.unregister() }
         } catch {
             logger.write("[app] login item \(on ? "register" : "unregister") failed: \(error.localizedDescription)")
         }
-        if on { runInBackground(trigger: "auto") }
+    }
+
+    /// "enabled", "requiresApproval", "notRegistered" or "notFound" (e.g. not in Applications).
+    var loginItemStatus: String {
+        switch SMAppService.mainApp.status {
+        case .enabled: return "enabled"
+        case .requiresApproval: return "requiresApproval"
+        case .notRegistered: return "notRegistered"
+        default: return "notFound"
+        }
     }
 
     func updateState(_ change: (inout AppState) -> Void) {
@@ -81,16 +136,14 @@ final class AppController {
         onChange?()
     }
 
-    func runInBackground(trigger: String) {
-        queue.async { self.sortNow(trigger: trigger) }
-    }
-
-    /// Hourly timer and wake hook, active only while auto-sort is on.
+    /// Hourly timer, active only while auto-sort is on.
     func applySchedule() {
         timer?.invalidate()
         timer = nil
         guard rules.autoSort else { return }
-        let t = Timer(timeInterval: 3600, repeats: true) { [weak self] _ in self?.runInBackground(trigger: "auto") }
+        let t = Timer(timeInterval: 3600, repeats: true) { [weak self] _ in
+            self?.runInBackground(trigger: "auto", onlyIfAutoSort: true)
+        }
         t.tolerance = 300
         RunLoop.main.add(t, forMode: .common)
         timer = t
@@ -99,10 +152,9 @@ final class AppController {
     func start() {
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
                                                           queue: .main) { [weak self] _ in
-            guard let self = self, self.rules.autoSort else { return }
-            self.runInBackground(trigger: "auto (wake)")
+            self?.runInBackground(trigger: "auto (wake)", onlyIfAutoSort: true)
         }
         applySchedule()
-        if rules.autoSort { runInBackground(trigger: "auto (launch)") }
+        runInBackground(trigger: "auto (launch)", onlyIfAutoSort: true)
     }
 }

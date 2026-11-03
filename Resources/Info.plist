@@ -13,6 +13,9 @@
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSDesktopFolderUsageDescription</key><string>Hangover moves files from your Desktop into folders by your rules. It never deletes anything.</string>
+    <key>NSDownloadsFolderUsageDescription</key><string>Hangover moves files from your Downloads into folders by your rules. It never deletes anything.</string>
+    <key>NSDocumentsFolderUsageDescription</key><string>Hangover can file things into your Documents folder when a rule says so. It never deletes anything.</string>
     <key>NSHumanReadableCopyright</key><string>MIT License · github.com/kasidisc/hangover</string>
 </dict>
 </plist>

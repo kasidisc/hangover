@@ -6,11 +6,13 @@ final class PanelWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     private let window: NSWindow
     private let web: WKWebView
     private let bridge: Bridge
+    private let pageURL: URL?
 
     init(controller: AppController) {
         let config = WKWebViewConfiguration()
         web = WKWebView(frame: NSRect(x: 0, y: 0, width: 1120, height: 800), configuration: config)
-        bridge = Bridge(controller: controller, web: web)
+        pageURL = Bundle.main.url(forResource: "ui", withExtension: "html")
+        bridge = Bridge(controller: controller, web: web, pageURL: pageURL)
         config.userContentController.add(bridge, name: "hangover")
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1120, height: 800),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -22,12 +24,19 @@ final class PanelWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("HangoverPanel")
         if !window.setFrameUsingName("HangoverPanel") { window.center() }
-        if let ui = Bundle.main.url(forResource: "ui", withExtension: "html") {
+        if let ui = pageURL {
             web.loadFileURL(ui, allowingReadAccessTo: ui.deletingLastPathComponent())
         } else {
             web.loadHTMLString("<p style='font:14px -apple-system;padding:20px'>ui.html is missing from the app bundle.</p>",
                                baseURL: nil)
         }
+    }
+
+    /// The panel only ever shows its own page; dropped files and links don't navigate it.
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        let target = action.request.url?.standardizedFileURL.path
+        decisionHandler(target != nil && target == pageURL?.standardizedFileURL.path ? .allow : .cancel)
     }
 
     /// Dev/test hook (env only, never set for users): HANGOVER_TEST_JS runs a script in the page after it
