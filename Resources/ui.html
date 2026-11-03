@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hangover</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --ink: #1d1d1f; --muted: #6e6e73; --line: #e3e3e0;
+    --accent: #2f6fde; --ok: #1f8a4c; --warn: #b26b00; --bad: #c4314b; --chip: #eef2fb; --hero: #eef4ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161618; --card: #1f1f22; --ink: #ececee; --muted: #9a9aa2; --line: #333338;
+      --accent: #6d9bff; --ok: #4cc27f; --warn: #e3a33b; --bad: #ff6b81; --chip: #26304a; --hero: #1d2638;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+           padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  .tagline { color: var(--muted); font-size: 12px; margin-right: 6px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 80px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hero { background: var(--hero); }
+  .hero h2 { font-size: 17px; }
+  .hero p { margin: 0 0 10px; max-width: 760px; }
+  .muted { color: var(--muted); }
+  .spacer { flex: 1; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.big { font-size: 15px; padding: 9px 18px; }
+  button.danger { color: var(--bad); }
+  button.icon { padding: 3px 7px; }
+  button.link { border: 0; background: none; color: var(--accent); padding: 0 4px; }
+  button:disabled { opacity: .5; cursor: default; }
+  input[type=text], select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+           border-radius: 6px; padding: 4px 7px; width: 100%; }
+  input::placeholder { color: var(--muted); opacity: .45; font-style: italic; }
+  input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .withbtn { display: flex; gap: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; }
+  td { padding: 4px 6px; vertical-align: middle; border-top: 1px solid var(--line); }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--chip); }
+  .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+  .switch { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; user-select: none; }
+  .problem { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--line); }
+  .problem:first-child { border-top: 0; }
+  .problem .what { flex: 1; word-break: break-all; }
+  .problem.err .what { color: var(--bad); } .problem.secret .what { color: var(--warn); }
+  pre { font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 320px; overflow: auto; margin: 0; }
+  .res td:first-child { white-space: nowrap; }
+  .s-moved, .s-would_move { color: var(--ok); } .s-waiting { color: var(--muted); }
+  .s-secret { color: var(--warn); } .s-error { color: var(--bad); }
+  .folder-meta { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .rules col.on { width: 34px; } .rules col.move { width: 96px; }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+           padding: 8px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; }
+  #toast.show { opacity: 1; } #toast.err { background: var(--bad); color: #fff; }
+  #savebar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line);
+             padding: 10px 20px; display: none; gap: 10px; align-items: center; justify-content: flex-end; }
+  #savebar.show { display: flex; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  @media (max-width: 760px) { .folder-meta { grid-template-columns: 1fr; } .rules thead { display: none; }
+    .rules tr { display: block; border-top: 1px solid var(--line); padding: 6px 0; } .rules td { display: block; border: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hangover</h1>
+  <span class="tagline">Your Downloads had a big night. Hangover cleans up in the morning.</span>
+  <span id="health" class="pill">loading…</span>
+  <span id="lastrun" class="muted"></span>
+  <span class="spacer"></span>
+  <label class="switch" title="Every hour, move files from previous days automatically">
+    <input type="checkbox" id="auto"> Auto-sort hourly
+  </label>
+  <button id="previewBtn">Preview</button>
+  <button id="sortBtn" class="primary">Sort now</button>
+</header>
+
+<main>
+  <section class="card" id="warningCard" hidden><h2>Heads up</h2><div id="warning"></div></section>
+
+  <section class="card hero" id="welcome" hidden>
+    <h2>Welcome to Hangover 👋</h2>
+    <p>Hangover tidies your Desktop and Downloads by moving files into folders. It <b>never deletes anything</b>,
+       and it waits a day: anything you got today stays put until tomorrow, so it's still where you left it.</p>
+    <p>Below is what it would move right now with the starter rules. You can change any rule further down.</p>
+    <p><button class="primary big" id="startBtn">Start sorting automatically</button>
+       <button class="link" id="laterBtn">Not yet, just let me look around</button></p>
+  </section>
+
+  <section class="card" id="permCard" hidden>
+    <h2>Hangover needs permission</h2>
+    <p id="permText"></p>
+    <p><button class="primary" id="permBtn">Open Privacy Settings</button></p>
+    <p class="hint">Turn Hangover on under <b>Files &amp; Folders</b>. If it still can't get in, add it under <b>Full Disk Access</b> instead.</p>
+  </section>
+
+  <section class="card" id="problemsCard" hidden>
+    <h2>Needs attention <span class="muted">— from the last run</span></h2>
+    <div id="problems"></div>
+  </section>
+
+  <section class="card" id="resultsCard" hidden>
+    <h2 id="resultsTitle">Results</h2>
+    <table class="res"><thead><tr><th>Status</th><th>File</th><th>Rule</th><th>To</th></tr></thead>
+      <tbody id="results"></tbody></table>
+  </section>
+
+  <div id="folders"></div>
+  <p>
+    <button id="addFolder">+ Add watched folder</button>
+    <button id="importBtn">Import rules…</button>
+    <button id="exportBtn">Export rules…</button>
+  </p>
+
+  <section class="card">
+    <details>
+      <summary>Never move</summary>
+      <p class="hint">Files that match these are left alone. Possible secrets (keys, passwords) are listed under “Needs attention” so you can put them somewhere safe yourself. Comma-separated.</p>
+      <table><tbody id="never"></tbody></table>
+    </details>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Recent log</summary>
+      <p class="hint" id="logpath"></p>
+      <pre id="log"></pre>
+    </details>
+  </section>
+</main>
+
+<div id="savebar"><span class="muted">Unsaved rule changes</span>
+  <button id="revertBtn">Discard</button><button id="saveBtn" class="primary">Save rules</button></div>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let rules = null, dirty = false, state = null;
+
+// ---- bridge to Swift ----
+const pending = new Map(); let nextId = 1;
+window.__hangoverReply = (id, res) => {
+  const p = pending.get(id); if (!p) return; pending.delete(id);
+  res.ok ? p.resolve(res.data) : p.reject(new Error(res.error));
+};
+window.__hangoverPush = (event, data) => {
+  if (event === "state") applyState(data, true);
+  if (event === "runPreview") $("previewBtn").click();
+};
+const call = (action, payload) => new Promise((resolve, reject) => {
+  const id = nextId++; pending.set(id, { resolve, reject });
+  window.webkit.messageHandlers.hangover.postMessage({ id, action, payload });
+});
+
+function toast(msg, err) {
+  const t = $("toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.className = "", err ? 6000 : 2500);
+}
+function setDirty(v) { dirty = v; $("savebar").classList.toggle("show", v); }
+
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (k === "checked") e.checked = v;
+    else if (k === "value") e.value = v; else e.setAttribute(k, v);
+  }
+  kids.flat().forEach((k) => e.append(k));
+  return e;
+};
+const listStr = (a) => (a || []).join(", ");
+const strList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+
+function textInput(obj, key, isList, placeholder) {
+  return el("input", { type: "text", placeholder: placeholder || "", value: isList ? listStr(obj[key]) : (obj[key] || ""),
+    oninput: (e) => { const v = e.target.value; if (isList) { const l = strList(v); if (l.length) obj[key] = l; else delete obj[key]; }
+                      else obj[key] = v; setDirty(true); } });
+}
+
+function pathInput(obj, key, placeholder) {
+  const input = textInput(obj, key, false, placeholder);
+  return el("div", { class: "withbtn" }, input,
+    el("button", { title: "Choose a folder", onclick: async () => {
+      try { const p = await call("pickFolder", { purpose: key }); if (p) { obj[key] = p; input.value = p; setDirty(true); } }
+      catch (e) { toast(e.message, true); } } }, "Choose…"));
+}
+
+function renderFolders() {
+  const root = $("folders"); root.innerHTML = "";
+  rules.folders.forEach((f, fi) => {
+    const tbody = el("tbody");
+    f.rules.forEach((r, ri) => {
+      const move = (d) => { const j = ri + d; if (j < 0 || j >= f.rules.length) return;
+        [f.rules[ri], f.rules[j]] = [f.rules[j], f.rules[ri]]; setDirty(true); renderFolders(); };
+      tbody.append(el("tr", {},
+        el("td", {}, el("input", { type: "checkbox", checked: r.enabled !== false, title: "Rule on/off",
+          onchange: (e) => { r.enabled = e.target.checked; setDirty(true); } })),
+        el("td", {}, textInput(r, "name", false, "Rule name")),
+        el("td", {}, textInput(r, "extensions", true, "any")),
+        el("td", {}, textInput(r, "name_starts_with", true, "any")),
+        el("td", {}, textInput(r, "name_contains", true, "any")),
+        el("td", {}, pathInput(r, "to", "~/Downloads/…")),
+        el("td", {}, el("button", { class: "icon", title: "Move up (checked first)", onclick: () => move(-1) }, "↑"),
+                     el("button", { class: "icon", title: "Move down", onclick: () => move(1) }, "↓"),
+                     el("button", { class: "icon danger", title: "Remove this rule (files are not touched)",
+                       onclick: () => { if (confirm(`Remove rule “${r.name}”? Files are not touched.`)) {
+                         f.rules.splice(ri, 1); setDirty(true); renderFolders(); } } }, "✕"))));
+    });
+    const ageSel = el("select", { onchange: (e) => { f.age_field = e.target.value; setDirty(true); } },
+      el("option", { value: "added" }, "Wait: day after it was added"),
+      el("option", { value: "created" }, "Wait: day after it was created"));
+    ageSel.value = f.age_field || "added";
+    root.append(el("section", { class: "card" },
+      el("h2", {}, el("input", { type: "checkbox", checked: f.enabled !== false, title: "Watch this folder",
+                    onchange: (e) => { f.enabled = e.target.checked; setDirty(true); } }),
+         f.name || "New folder", el("span", { class: "muted" }, `${f.rules.length} rule${f.rules.length === 1 ? "" : "s"} · first match wins`),
+         el("span", { class: "spacer" }),
+         el("button", { class: "danger", onclick: () => { if (confirm(`Stop watching “${f.name}” and remove its rules? Files are not touched.`)) {
+           rules.folders.splice(fi, 1); setDirty(true); renderFolders(); } } }, "Remove folder")),
+      el("div", { class: "folder-meta" }, textInput(f, "name", false, "Folder name"),
+         pathInput(f, "path", "~/Some/Folder"), ageSel),
+      el("table", { class: "rules" },
+        el("colgroup", {}, el("col", { class: "on" }), el("col", { style: "width:14%" }), el("col", { style: "width:16%" }),
+           el("col", { style: "width:11%" }), el("col", { style: "width:13%" }), el("col"), el("col", { class: "move" })),
+        el("thead", {}, el("tr", {}, el("th"), el("th", {}, "Rule"), el("th", {}, "Extensions"), el("th", {}, "Name starts with"),
+           el("th", {}, "Name contains"), el("th", {}, "Move to"), el("th"))), tbody),
+      el("button", { style: "margin-top:8px", onclick: () => { f.rules.push({ name: "New rule", enabled: true, extensions: [], to: "" });
+        setDirty(true); renderFolders(); } }, "+ Add rule"),
+      el("p", { class: "hint" }, "A rule needs extensions and/or a name filter. Every filter you fill in must match. Leave a box empty to ignore it.")));
+  });
+}
+
+function renderNever() {
+  const n = rules.never_move, tb = $("never"); tb.innerHTML = "";
+  [["secret_extensions", "Secret extensions"], ["secret_name_contains", "Secret if name contains"],
+   ["skip_extensions", "Skip extensions"], ["skip_name_prefixes", "Skip names starting with"]].forEach(([k, label]) =>
+    tb.append(el("tr", {}, el("td", { style: "width:220px" }, label), el("td", {}, textInput(n, k, true)))));
+}
+
+const tilde = (p) => (p || "").replace(/^\/Users\/[^/]+/, "~");
+
+function renderProblems() {
+  const { errors, secrets } = state.problems;
+  const box = $("problems"); box.innerHTML = "";
+  errors.forEach((r) => box.append(el("div", { class: "problem err" },
+    el("span", { class: "what" }, `${r.folder}: ${r.file === r.folder ? "" : r.file + " — "}${r.detail || "error"}`))));
+  secrets.forEach((r) => box.append(el("div", { class: "problem secret" },
+    el("span", { class: "what" }, `${r.folder}: ${r.file} looks like a key or password, so it was left in place. Put it somewhere safe yourself.`),
+    el("button", { class: "link", onclick: async () => { applyState(await call("ignoreSecret", { folder: r.folder, file: r.file })); } },
+      "Stop warning me about this file"))));
+  $("problemsCard").hidden = !(errors.length + secrets.length);
+
+  const perm = errors.find((r) => /not permitted|permission/i.test(r.detail || ""));
+  $("permCard").hidden = !perm;
+  if (perm) $("permText").textContent = `macOS blocked Hangover from opening “${perm.folder}”. Until you allow it, nothing in that folder gets sorted.`;
+
+  const h = $("health");
+  if (errors.length) { h.textContent = `${errors.length} problem${errors.length > 1 ? "s" : ""} in the last run`; h.className = "pill bad"; }
+  else if (!rules.auto_sort) { h.textContent = "Auto-sort off"; h.className = "pill warn"; }
+  else { h.textContent = "Auto-sort on · all good"; h.className = "pill ok"; }
+}
+
+function applyState(s, keepEdits) {
+  state = s;
+  if (!keepEdits || !dirty) { rules = s.rules; $("auto").checked = !!rules.auto_sort; renderFolders(); renderNever(); setDirty(false); }
+  $("lastrun").textContent = s.lastRun ? `Last sorted ${new Date(s.lastRun).toLocaleString()}` : "Not run yet";
+  $("log").textContent = s.log.join("\n"); $("logpath").textContent = `Full log: ${s.logPath}`;
+  $("warningCard").hidden = !s.warning; $("warning").textContent = s.warning || "";
+  renderProblems();
+  if (!s.firstRunDone && $("welcome").hidden) { $("welcome").hidden = false; runPreview(); }
+  if (s.firstRunDone) $("welcome").hidden = true;
+}
+
+function showResults(title, results) {
+  $("resultsCard").hidden = false; $("resultsTitle").textContent = title;
+  const tb = $("results"); tb.innerHTML = "";
+  const label = { moved: "Moved", would_move: "Will move", waiting: "Waiting (today)", secret: "Secret, left", error: "Error" };
+  if (!results.length) tb.append(el("tr", {}, el("td", { colspan: 4, class: "muted" }, "Nothing matches any rule right now.")));
+  results.forEach((r) => tb.append(el("tr", {},
+    el("td", { class: "s-" + r.status }, label[r.status] || r.status),
+    el("td", {}, `${r.folder} / ${r.file}`), el("td", {}, r.rule || ""),
+    el("td", { class: "muted" }, r.detail || tilde(r.to)))));
+}
+
+async function guard(fn) {
+  if (dirty) { toast("Save or discard your rule changes first", true); return; }
+  document.querySelectorAll("header button").forEach((b) => b.disabled = true);
+  try { await fn(); } catch (e) { toast(e.message, true); }
+  finally { document.querySelectorAll("header button").forEach((b) => b.disabled = false); }
+}
+const runPreview = () => guard(async () => showResults("Preview — nothing was moved", await call("preview")));
+
+$("previewBtn").onclick = runPreview;
+$("sortBtn").onclick = () => guard(async () => {
+  const results = await call("sortNow"); showResults("Sorted", results);
+  const moved = results.filter((x) => x.status === "moved").length; toast(`Moved ${moved} file${moved === 1 ? "" : "s"}`);
+  applyState(await call("getState"));
+});
+$("auto").onchange = async (e) => {
+  if (dirty) { e.target.checked = !e.target.checked; toast("Save or discard your rule changes first", true); return; }
+  try { applyState(await call("setAutoSort", e.target.checked)); toast(e.target.checked ? "Auto-sort on (every hour)" : "Auto-sort off"); }
+  catch (err) { toast(err.message, true); e.target.checked = !e.target.checked; }
+};
+$("startBtn").onclick = async () => {
+  try { await call("setAutoSort", true); applyState(await call("completeFirstRun")); toast("Hangover is on. It'll tidy up every hour."); }
+  catch (e) { toast(e.message, true); }
+};
+$("laterBtn").onclick = async () => { applyState(await call("completeFirstRun")); };
+$("permBtn").onclick = () => call("openPrivacySettings");
+$("saveBtn").onclick = async () => {
+  try { await call("saveRules", rules); setDirty(false); applyState(await call("getState")); toast("Rules saved"); }
+  catch (e) { toast(e.message, true); }
+};
+$("revertBtn").onclick = async () => { setDirty(false); applyState(await call("getState")); };
+$("addFolder").onclick = () => { rules.folders.push({ name: "New folder", path: "~/", age_field: "added", enabled: true, rules: [] });
+  setDirty(true); renderFolders(); };
+$("importBtn").onclick = async () => {
+  if (dirty) { toast("Save or discard your rule changes first", true); return; }
+  try { const r = await call("importRules"); if (r) { applyState(await call("getState")); toast("Rules imported"); } }
+  catch (e) { toast(e.message, true); }
+};
+$("exportBtn").onclick = async () => {
+  try { const p = await call("exportRules"); if (p) toast(`Saved to ${p}`); } catch (e) { toast(e.message, true); }
+};
+call("getState").then((s) => applyState(s)).catch((e) => toast(e.message, true));
+</script>
+</body>
+</html>
