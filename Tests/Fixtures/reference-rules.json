@@ -1,0 +1,297 @@
+{
+  "_comment": "Mirai file sorter rules (replaces Hazel 5). Edit in the File Sorter app, or by hand. Rules are checked top to bottom per folder; first match wins. A file only moves once it is from a previous day (date added for Downloads, date created for Desktop), same as Hazel's 'not today' condition. Nothing is ever deleted or overwritten.",
+  "auto_sort": false,
+  "never_move": {
+    "secret_extensions": [
+      "pem",
+      "key",
+      "p12",
+      "pfx",
+      "ppk",
+      "env",
+      "kdbx",
+      "ovpn",
+      "keychain",
+      "cer",
+      "crt"
+    ],
+    "secret_name_contains": [
+      "accesskey",
+      "access_key",
+      "password",
+      "passwd",
+      "secret",
+      "credential",
+      "token",
+      "id_rsa",
+      "id_ed25519",
+      "ssh key",
+      "recovery-code",
+      "recovery_code",
+      "private key"
+    ],
+    "skip_extensions": [
+      "download",
+      "crdownload",
+      "part",
+      "partial",
+      "opdownload",
+      "ini",
+      "db",
+      "torrent"
+    ],
+    "skip_name_prefixes": [
+      "~$",
+      "."
+    ]
+  },
+  "folders": [
+    {
+      "name": "Desktop",
+      "path": "~/Desktop",
+      "age_field": "created",
+      "enabled": true,
+      "rules": [
+        {
+          "name": "Screen Recording",
+          "enabled": true,
+          "name_contains": [
+            "Screen Recording"
+          ],
+          "extensions": [
+            "mov",
+            "mp4"
+          ],
+          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screen Recording"
+        },
+        {
+          "name": "Shottr (SCR-)",
+          "enabled": true,
+          "name_starts_with": [
+            "SCR-"
+          ],
+          "extensions": [
+            "png",
+            "jpg",
+            "jpeg",
+            "heic",
+            "gif",
+            "webp"
+          ],
+          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screenshot"
+        },
+        {
+          "name": "Screenshot",
+          "enabled": true,
+          "name_contains": [
+            "Screenshot",
+            "Screen Shot"
+          ],
+          "extensions": [
+            "png",
+            "jpg",
+            "jpeg",
+            "heic",
+            "tiff",
+            "gif",
+            "pdf"
+          ],
+          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screenshot"
+        }
+      ]
+    },
+    {
+      "name": "Downloads",
+      "path": "~/Downloads",
+      "age_field": "added",
+      "enabled": true,
+      "rules": [
+        {
+          "name": "DMG",
+          "enabled": true,
+          "extensions": [
+            "dmg",
+            "img",
+            "pkg"
+          ],
+          "to": "~/Downloads/Compressed/dmg"
+        },
+        {
+          "name": "Application",
+          "enabled": true,
+          "extensions": [
+            "app"
+          ],
+          "allow_bundles": true,
+          "to": "~/Downloads/Compressed/dmg"
+        },
+        {
+          "name": "Compressed",
+          "enabled": true,
+          "extensions": [
+            "zip",
+            "rar",
+            "7z",
+            "tar",
+            "gz",
+            "tgz",
+            "bz2",
+            "xz",
+            "zst",
+            "iso"
+          ],
+          "to": "~/Downloads/Compressed"
+        },
+        {
+          "name": "Video",
+          "enabled": true,
+          "extensions": [
+            "mp4",
+            "mov",
+            "m4v",
+            "mkv",
+            "avi",
+            "webm",
+            "wmv",
+            "flv",
+            "mpg",
+            "mpeg"
+          ],
+          "to": "~/Downloads/Videos"
+        },
+        {
+          "name": "Music",
+          "enabled": true,
+          "extensions": [
+            "mp3",
+            "m4a",
+            "wav",
+            "aac",
+            "flac",
+            "ogg",
+            "aif",
+            "aiff",
+            "opus"
+          ],
+          "to": "~/Music"
+        },
+        {
+          "name": "TwitPictures",
+          "enabled": true,
+          "name_starts_with": [
+            "twitter_"
+          ],
+          "extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "webp",
+            "heic"
+          ],
+          "to": "~/Downloads/Pictures/twitter"
+        },
+        {
+          "name": "Pictures",
+          "enabled": true,
+          "extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "webp",
+            "heic",
+            "heif",
+            "tif",
+            "tiff",
+            "bmp",
+            "svg",
+            "psd",
+            "dng",
+            "cr2",
+            "nef",
+            "arw",
+            "raw"
+          ],
+          "to": "~/Downloads/Pictures"
+        },
+        {
+          "name": "STL",
+          "enabled": true,
+          "extensions": [
+            "stl",
+            "3mf",
+            "blend",
+            "obj"
+          ],
+          "to": "~/Downloads/Documents/STL"
+        },
+        {
+          "name": "PDF",
+          "enabled": true,
+          "extensions": [
+            "pdf"
+          ],
+          "to": "~/Downloads/Documents/PDF"
+        },
+        {
+          "name": "Books-epub",
+          "enabled": true,
+          "extensions": [
+            "epub",
+            "mobi",
+            "azw3"
+          ],
+          "to": "~/Downloads/Books"
+        },
+        {
+          "name": "Document",
+          "enabled": true,
+          "extensions": [
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "ppt",
+            "pptx",
+            "pages",
+            "numbers",
+            "odt",
+            "ods",
+            "odp",
+            "rtf",
+            "txt",
+            "md",
+            "csv",
+            "tsv",
+            "json",
+            "xml",
+            "html",
+            "htm"
+          ],
+          "to": "~/Downloads/Documents"
+        },
+        {
+          "name": "EXE",
+          "enabled": true,
+          "extensions": [
+            "exe",
+            "msi"
+          ],
+          "to": "~/Downloads/Documents/etc/EXE"
+        },
+        {
+          "name": "Tensor",
+          "enabled": true,
+          "extensions": [
+            "safetensors",
+            "pt",
+            "ckpt",
+            "gguf"
+          ],
+          "to": "~/Downloads/Documents/Safetensors"
+        }
+      ]
+    }
+  ]
+}
