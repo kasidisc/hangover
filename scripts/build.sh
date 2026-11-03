@@ -12,7 +12,7 @@ done
 lipo -create .build/arch/Hangover-arm64 .build/arch/Hangover-x86_64 -output "$APP/Contents/MacOS/Hangover"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 for f in ui.html AppIcon.icns; do [ -f "Resources/$f" ] && cp "Resources/$f" "$APP/Contents/Resources/"; done
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "Hangover Self-Signed"; then
+if security find-identity -p codesigning 2>/dev/null | grep -q "Hangover Self-Signed"; then
     codesign --force --options runtime --sign "Hangover Self-Signed" "$APP"
 else
     echo "warning: 'Hangover Self-Signed' identity not found; signing ad-hoc (run scripts/make-signing-cert.sh)"

@@ -1,5 +1,5 @@
 {
-  "_comment": "Mirai file sorter rules (replaces Hazel 5). Edit in the File Sorter app, or by hand. Rules are checked top to bottom per folder; first match wins. A file only moves once it is from a previous day (date added for Downloads, date created for Desktop), same as Hazel's 'not today' condition. Nothing is ever deleted or overwritten.",
+  "_comment": "Example rules in the original Python file-sorter format, used to test that such files import unchanged.",
   "auto_sort": false,
   "never_move": {
     "secret_extensions": [
@@ -53,22 +53,22 @@
       "enabled": true,
       "rules": [
         {
-          "name": "Screen Recording",
+          "name": "Desktop rule 1",
           "enabled": true,
           "name_contains": [
-            "Screen Recording"
+            "Example"
           ],
           "extensions": [
             "mov",
             "mp4"
           ],
-          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screen Recording"
+          "to": "~/Sorted/Desktop/1"
         },
         {
-          "name": "Shottr (SCR-)",
+          "name": "Desktop rule 2",
           "enabled": true,
           "name_starts_with": [
-            "SCR-"
+            "PREFIX-"
           ],
           "extensions": [
             "png",
@@ -78,14 +78,13 @@
             "gif",
             "webp"
           ],
-          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screenshot"
+          "to": "~/Sorted/Desktop/2"
         },
         {
-          "name": "Screenshot",
+          "name": "Desktop rule 3",
           "enabled": true,
           "name_contains": [
-            "Screenshot",
-            "Screen Shot"
+            "Example"
           ],
           "extensions": [
             "png",
@@ -96,7 +95,7 @@
             "gif",
             "pdf"
           ],
-          "to": "~/Library/Mobile Documents/com~apple~CloudDocs/Screenshot"
+          "to": "~/Sorted/Desktop/3"
         }
       ]
     },
@@ -107,26 +106,26 @@
       "enabled": true,
       "rules": [
         {
-          "name": "DMG",
+          "name": "Downloads rule 1",
           "enabled": true,
           "extensions": [
             "dmg",
             "img",
             "pkg"
           ],
-          "to": "~/Downloads/Compressed/dmg"
+          "to": "~/Sorted/Downloads/1"
         },
         {
-          "name": "Application",
+          "name": "Downloads rule 2",
           "enabled": true,
           "extensions": [
             "app"
           ],
           "allow_bundles": true,
-          "to": "~/Downloads/Compressed/dmg"
+          "to": "~/Sorted/Downloads/2"
         },
         {
-          "name": "Compressed",
+          "name": "Downloads rule 3",
           "enabled": true,
           "extensions": [
             "zip",
@@ -140,10 +139,10 @@
             "zst",
             "iso"
           ],
-          "to": "~/Downloads/Compressed"
+          "to": "~/Sorted/Downloads/3"
         },
         {
-          "name": "Video",
+          "name": "Downloads rule 4",
           "enabled": true,
           "extensions": [
             "mp4",
@@ -157,10 +156,10 @@
             "mpg",
             "mpeg"
           ],
-          "to": "~/Downloads/Videos"
+          "to": "~/Sorted/Downloads/4"
         },
         {
-          "name": "Music",
+          "name": "Downloads rule 5",
           "enabled": true,
           "extensions": [
             "mp3",
@@ -173,13 +172,13 @@
             "aiff",
             "opus"
           ],
-          "to": "~/Music"
+          "to": "~/Sorted/Downloads/5"
         },
         {
-          "name": "TwitPictures",
+          "name": "Downloads rule 6",
           "enabled": true,
           "name_starts_with": [
-            "twitter_"
+            "PREFIX-"
           ],
           "extensions": [
             "jpg",
@@ -189,10 +188,10 @@
             "webp",
             "heic"
           ],
-          "to": "~/Downloads/Pictures/twitter"
+          "to": "~/Sorted/Downloads/6"
         },
         {
-          "name": "Pictures",
+          "name": "Downloads rule 7",
           "enabled": true,
           "extensions": [
             "jpg",
@@ -213,10 +212,10 @@
             "arw",
             "raw"
           ],
-          "to": "~/Downloads/Pictures"
+          "to": "~/Sorted/Downloads/7"
         },
         {
-          "name": "STL",
+          "name": "Downloads rule 8",
           "enabled": true,
           "extensions": [
             "stl",
@@ -224,28 +223,28 @@
             "blend",
             "obj"
           ],
-          "to": "~/Downloads/Documents/STL"
+          "to": "~/Sorted/Downloads/8"
         },
         {
-          "name": "PDF",
+          "name": "Downloads rule 9",
           "enabled": true,
           "extensions": [
             "pdf"
           ],
-          "to": "~/Downloads/Documents/PDF"
+          "to": "~/Sorted/Downloads/9"
         },
         {
-          "name": "Books-epub",
+          "name": "Downloads rule 10",
           "enabled": true,
           "extensions": [
             "epub",
             "mobi",
             "azw3"
           ],
-          "to": "~/Downloads/Books"
+          "to": "~/Sorted/Downloads/10"
         },
         {
-          "name": "Document",
+          "name": "Downloads rule 11",
           "enabled": true,
           "extensions": [
             "doc",
@@ -269,19 +268,19 @@
             "html",
             "htm"
           ],
-          "to": "~/Downloads/Documents"
+          "to": "~/Sorted/Downloads/11"
         },
         {
-          "name": "EXE",
+          "name": "Downloads rule 12",
           "enabled": true,
           "extensions": [
             "exe",
             "msi"
           ],
-          "to": "~/Downloads/Documents/etc/EXE"
+          "to": "~/Sorted/Downloads/12"
         },
         {
-          "name": "Tensor",
+          "name": "Downloads rule 13",
           "enabled": true,
           "extensions": [
             "safetensors",
@@ -289,7 +288,7 @@
             "ckpt",
             "gguf"
           ],
-          "to": "~/Downloads/Documents/Safetensors"
+          "to": "~/Sorted/Downloads/13"
         }
       ]
     }
