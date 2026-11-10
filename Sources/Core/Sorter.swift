@@ -122,7 +122,7 @@ final class Sorter {
                 continue  // folders are never moved; only real .app bundles when the rule allows it
             }
             if fs.exists(src.appendingPathComponent(name + ".part")) {
-                continue  // Firefox's placeholder for a download still in progress
+                continue  // empty placeholder some browsers keep next to a ".part" file while downloading
             }
             if isSecret(name, never) {
                 log.write("[\(folder.name)] SECRET left in place, file it somewhere safe by hand: \(name)")

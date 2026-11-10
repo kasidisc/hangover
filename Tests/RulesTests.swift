@@ -92,7 +92,7 @@ func registerRulesTests() {
         expect(desktop.ageField == .created)
         let shot = desktop.rules.first { $0.name == "Screenshots" }!
         expect(shot.nameContains! == ["Screenshot", "Screen Shot", "Bildschirmfoto"], "\(shot.nameContains!)")
-        let shottr = desktop.rules.first { $0.nameStartsWith != nil }!
-        expect(shottr.nameStartsWith! == ["SCR-"])
+        let scr = desktop.rules.first { $0.nameStartsWith != nil }!
+        expect(scr.nameStartsWith! == ["SCR-"])
     }
 }

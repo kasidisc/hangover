@@ -165,7 +165,7 @@ func registerSorterTests() {
         expect(r.first?.status == .waiting, "\(r)")
         expect(exists(t.src.appendingPathComponent("late.zip")))
     }
-    test("firefoxPlaceholderSkipped") {
+    test("partFilePlaceholderSkipped") {
         var t = setup([])
         t.set.folders[0].rules = [archives(t.root)]
         make(t.src, "big.zip", contents: "")      // zero-byte placeholder

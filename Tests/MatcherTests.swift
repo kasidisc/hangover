@@ -33,7 +33,7 @@ func registerMatcherTests() {
         expect(firstMatchingRule("notes.xyz", in: downloads) == nil)
     }
     test("allFiltersMustMatch") {
-        expect(firstMatchingRule("SCR-20261103-ab.png", in: desktop)?.name == "Shottr")
+        expect(firstMatchingRule("SCR-20261103-ab.png", in: desktop)?.name == "Screenshots (SCR-)")
         expect(firstMatchingRule("SCR-notes.txt", in: desktop) == nil)
         expect(firstMatchingRule("MySCR-1.png", in: desktop) == nil)
         expect(firstMatchingRule("Screenshot 2026-11-03 at 10.00.00.png", in: desktop)?.name == "Screenshots")

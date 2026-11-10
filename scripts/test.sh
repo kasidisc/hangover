@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds and runs the engine test suite (no SwiftPM needed).
+# Builds and runs the engine test suite (plain swiftc).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build

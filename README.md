@@ -41,13 +41,9 @@ Download the new `Hangover.zip`, replace the app in Applications, and do the **O
 
 Turn **Auto-sort** off, quit Hangover from its menu, and drag it to the Trash. Your rules live in `~/Library/Application Support/Hangover`, which you can delete too. Files Hangover already moved stay where they are.
 
-## Hangover vs. Hazel
-
-[Hazel](https://www.noodlesoft.com) is a much more powerful, paid automation tool (renaming, tagging, scripts, content matching and more). Hangover only does one thing, moving files by simple rules with a next-day wait, and it does it for free and safely enough to install on a relative's Mac.
-
 ## Build from source
 
-No Xcode project or SwiftPM needed, only the Command Line Tools (`xcode-select --install`):
+Only Apple's Command Line Tools are needed (`xcode-select --install`):
 
 ```bash
 scripts/test.sh      # engine tests

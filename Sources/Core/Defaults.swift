@@ -11,14 +11,14 @@ let defaultNeverMove = NeverMove(
 let imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "tif", "tiff", "bmp", "svg", "psd",
                        "dng", "cr2", "nef", "arw", "raw"]
 
-/// Generic, Hazel-like rules for a new user. Auto-sort starts off until the user turns it on.
+/// Sensible starter rules for a new user. Auto-sort starts off until the user turns it on.
 func starterRules(screenshotPrefix: String?) -> RuleSet {
     var shotNames = ["Screenshot", "Screen Shot"]
     if let p = screenshotPrefix, !p.isEmpty, !shotNames.contains(p) { shotNames.append(p) }
     let desktop = WatchedFolder(name: "Desktop", path: "~/Desktop", ageField: .created, rules: [
         Rule(name: "Screen Recordings", extensions: ["mov", "mp4"], nameContains: ["Screen Recording"],
              to: "~/Movies/Screen Recordings"),
-        Rule(name: "Shottr", extensions: ["png", "jpg", "jpeg", "heic", "gif", "webp"], nameStartsWith: ["SCR-"],
+        Rule(name: "Screenshots (SCR-)", extensions: ["png", "jpg", "jpeg", "heic", "gif", "webp"], nameStartsWith: ["SCR-"],
              to: "~/Pictures/Screenshots"),
         Rule(name: "Screenshots", extensions: ["png", "jpg", "jpeg", "heic", "tiff", "gif", "pdf"],
              nameContains: shotNames, to: "~/Pictures/Screenshots"),
